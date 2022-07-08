@@ -4,20 +4,13 @@ import { EntityManager } from "typeorm"
 import { TransactionBaseService } from "../interfaces"
 import { SalesChannel } from "../models"
 import { SalesChannelRepository } from "../repositories/sales-channel"
-import {
-  ExtendedFindConfig,
-  FindConfig,
-  QuerySelector,
-  Selector,
-} from "../types/common"
+import { FindConfig, QuerySelector } from "../types/common"
 import {
   CreateSalesChannelInput,
-  ListSalesChannelInput,
   UpdateSalesChannelInput,
 } from "../types/sales-channels"
 import EventBusService from "./event-bus"
 import { buildQuery } from "../utils"
-import salesChannels from "../loaders/feature-flags/sales-channels"
 
 type InjectedDependencies = {
   salesChannelRepository: typeof SalesChannelRepository
