@@ -4,7 +4,12 @@ import { EntityManager } from "typeorm"
 import { TransactionBaseService } from "../interfaces"
 import { SalesChannel } from "../models"
 import { SalesChannelRepository } from "../repositories/sales-channel"
-import { ExtendedFindConfig, FindConfig, Selector } from "../types/common"
+import {
+  ExtendedFindConfig,
+  FindConfig,
+  QuerySelector,
+  Selector,
+} from "../types/common"
 import {
   CreateSalesChannelInput,
   ListSalesChannelInput,
@@ -12,6 +17,7 @@ import {
 } from "../types/sales-channels"
 import EventBusService from "./event-bus"
 import { buildQuery } from "../utils"
+import salesChannels from "../loaders/feature-flags/sales-channels"
 
 type InjectedDependencies = {
   salesChannelRepository: typeof SalesChannelRepository
@@ -89,7 +95,7 @@ class SalesChannelService extends TransactionBaseService<SalesChannelService> {
    *   as the second element.
    */
   async listAndCount(
-    selector: ListSalesChannelInput,
+    selector: QuerySelector<SalesChannel>,
     config: FindConfig<SalesChannel> = {
       skip: 0,
       take: 20,
@@ -100,7 +106,14 @@ class SalesChannelService extends TransactionBaseService<SalesChannelService> {
         this.salesChannelRepository_
       )
 
-      const { q, query } = this.prepareListQuery_(selector, config)
+      const selector_ = { ...selector }
+      let q: string | undefined
+      if ("q" in selector_) {
+        q = selector_.q
+        delete selector_.q
+      }
+
+      const query = buildQuery(selector_, config)
 
       if (q) {
         return await salesChannelRepo.getFreeTextSearchResultsAndCount(q, query)
@@ -191,53 +204,6 @@ class SalesChannelService extends TransactionBaseService<SalesChannelService> {
           id: salesChannelId,
         })
     })
-  }
-
-  /**
-   * Creates a query object to be used for list queries.
-   * @param selector - the selector to create the query from
-   * @param config - the config to use for the query
-   * @return an object containing the query, relations and free-text
-   *   search param.
-   */
-  protected prepareListQuery_(
-    selector: Selector<SalesChannel> & { q?: string },
-    config: FindConfig<SalesChannel>
-  ): {
-    q?: string
-    relations: (keyof SalesChannel)[]
-    query: ExtendedFindConfig<SalesChannel, Selector<SalesChannel>>
-  } {
-    const selector_ = { ...selector }
-    const config_ = { ...config }
-
-    let q: string | undefined
-    if ("q" in selector_) {
-      q = selector_.q
-      delete selector_.q
-    }
-
-    const query = buildQuery<Selector<SalesChannel>, SalesChannel>(
-      selector_,
-      config_
-    )
-
-    if (config_.relations && config_.relations.length > 0) {
-      query.relations = config_.relations
-    }
-
-    if (config_.select && config_.select.length > 0) {
-      query.select = config_.select
-    }
-
-    const rels = query.relations
-    delete query.relations
-
-    return {
-      query,
-      relations: rels as (keyof SalesChannel)[],
-      q,
-    }
   }
 }
 
